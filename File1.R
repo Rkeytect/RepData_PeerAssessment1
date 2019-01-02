@@ -1,0 +1,73 @@
+## Loading the data
+DataRaw<-read.csv("activity.csv")
+
+## Calculating total number of steps taken each day
+DataAgg<-aggregate(DataRaw$steps,by=list(DataRaw$date), FUN=sum, na.rm=TRUE)
+
+## Renaming the columns
+names(DataAgg)<-c("Dates","Steps")
+
+## Making a histogram of the total number of steps taken each day
+hist(DataAgg$Steps, xlab="No. of steps taken per day", main="")
+
+## Calculating and reporting the mean total number of steps taken per day
+paste("Mean total number of steps taken per day=",mean(DataAgg$Steps))
+
+## Calculating and reporting the median total number of steps taken per day
+paste("Median total number of steps taken per day=",median(DataAgg$Steps))
+
+## Calculating average number of steps taken each 5-minute interval
+DataAvg<-aggregate(DataRaw$steps,by=list(DataRaw$interval), FUN=mean, na.rm=TRUE)
+
+## Renaming the columns
+names(DataAvg)<-c("Interval","AverageSteps")
+
+## Making a plot of the 5-minute interval and the average number of steps taken, averaged across all days
+plot(DataAvg$Interval,DataAvg$AverageSteps, type="l",xlab="Intervals",ylab="Average no. of steps")
+
+## Calculating and reporting which 5-minute interval, on average across all days, contains the maximum number of steps
+paste("The 5-min interval that on average contains max steps=",DataAvg[which.max(DataAvg$AverageSteps),]$Interval)
+
+## Calculate and report the total number of missing values in the dataset
+paste("The total no of missing values are =",sum(is.na(DataRaw$steps)))
+
+## Creating a new dataset equal to original dataset but with NAs in steps replaced by mean no of steps for that interval
+DataImpute <- DataRaw
+DataNew <- subset(DataRaw, !is.na(DataRaw$steps))
+index <- is.na(DataImpute$steps)
+IntervalMean <- tapply(DataNew$steps, DataNew$interval, mean, na.rm=TRUE, simplify=T)
+DataImpute$steps[index] <- IntervalMean[as.character(DataImpute$interval[index])]
+
+DataImpAgg<-aggregate(DataImpute$steps,by=list(DataImpute$date), FUN=sum, na.rm=TRUE)
+names(DataImpAgg)<-c("Dates","Steps")
+
+## Using imputed dataset to make a histogram of the no of steps taken each day
+hist(DataImpAgg$Steps, xlab="No. of steps taken per day", main="")
+
+paste("The median of total no of steps taken each day = ",median(DataImpAgg$Steps))
+
+paste("The mean of total no of steps taken each day = ",mean(DataImpAgg$Steps))
+
+paste("The values are different from those arrived at in the first part since the first part ignored NA values")
+paste("The total daily steps have gone up since the mean of each interval across days has been used in place of NAs")
+
+## Creating a new factor variable in dataset with 2 levels - "weekday" and "weekend"
+DataImpute$date<-as.Date(DataImpute$date)
+DataImpute$day<-weekdays(DataImpute$date)
+wkdays <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+DataImpute$wDay <- factor(DataImpute$day %in% wkdays,
+                          levels=c(FALSE, TRUE), labels=c('weekend', 'weekday'))
+
+##DataImpAvg<-aggregate(DataImpute$steps,by=list(DataImpute$interval), FUN=mean, na.rm=TRUE)
+DataImpAvg<-aggregate(steps~interval+wDay,DataImpute,mean,na.rm=TRUE)
+
+
+## Making a panel plot of 5-min and avg no of steps taken, averaged across weekdays & weekends
+library(lattice)
+xyplot(steps ~ interval | factor(wDay),
+       layout = c(1, 2),
+       xlab="Interval",
+       ylab="No. of steps",
+       type="l",
+       lty=1,
+       data=DataImpAvg)
